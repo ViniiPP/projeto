@@ -26,17 +26,28 @@ class SistemaControleAcesso:
         except Exception as e:
             print("Erro na conexão com API:", e)
 
-    def process_tag(self, tag):
+    def process_tag(self, tag,url = "http://localhost:5000/collaborators"):
         """Verifica se a tag está autorizada e registra entrada/saída."""
         # Aqui, ao invés de ter um cadastro fixo, poderia consultar a API/DB para verificar.
         # Exemplo simplificado: se a tag for 123456, consideramos o colaborador "Fulano" autorizado.
-        if tag == 123456:
-            nome = "Fulano"
-            autorizado = True
-        else:
-            nome = "Desconhecido"
-            autorizado = False
 
+        response = requests.get(url)
+
+        # Verifica se a requisição foi bem-sucedida
+        if response.status_code == 200:
+            colaboradores = response.json()
+
+        for colaborador in colaboradores:
+            if tag == colaborador["tag"]:
+                nome = colaborador["name"]
+                autorizado = True
+            else:
+                nome = "Desconhecido"
+                autorizado = False
+            
+                print(f"Nome: {nome}, Autorizado: {autorizado}")
+        else:
+             print("Erro ao acessar a API:", response.status_code)
         if not autorizado:
             self.send_log_to_api(f"Tentativa NÃO AUTORIZADA para tag {tag} - {datetime.now()}")
             return
