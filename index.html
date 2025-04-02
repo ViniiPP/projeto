@@ -1,0 +1,47 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Logs em tempo real</title>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.8.2.7.js"></script>
+</head>
+<body>
+    <h1>Logs em tempo real</h1>
+    <div id="messages"></div>
+
+    <script>
+        const showMessage = (msg) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.innerText = msg;
+            document.getElementById('messages').prepend(messageDiv); 
+            // prepend pra vir o mais recente em cima (opcional)
+        };
+
+        let pubnub;
+
+        const setupPubNub = () => {
+            pubnub = new PubNub({
+                publishKey: "pub-c-e146e5e2-7fb7-44b3-ac76-9eaca0cc110a",
+                subscribeKey: "sub-c-f7dedfee-2b67-4482-8d96-12380d34d3de",
+                userId: "index_html_user"
+            });
+
+            const channel = pubnub.channel('meu_canal');
+            const subscription = channel.subscription();
+
+            subscription.onMessage = (msgEvent) => {
+                // msgEvent.message é o objeto que publicamos
+                console.log("Recebido:", msgEvent.message);
+                // Se publicamos algo do tipo {"text": "alguma coisa"},
+                // então msgEvent.message.text é o conteúdo.
+                showMessage(msgEvent.message.text);
+            };
+
+            subscription.subscribe();
+        };
+
+        window.onload = setupPubNub;
+    </script>
+</body>
+</html>
