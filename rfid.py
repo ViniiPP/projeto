@@ -26,28 +26,28 @@ class SistemaControleAcesso:
         except Exception as e:
             print("Erro na conexão com API:", e)
 
-    def process_tag(self, tag,url = "http://localhost:5000/collaborators"):
-        """Verifica se a tag está autorizada e registra entrada/saída."""
-        # Aqui, ao invés de ter um cadastro fixo, poderia consultar a API/DB para verificar.
-        # Exemplo simplificado: se a tag for 123456, consideramos o colaborador "Fulano" autorizado.
-
-        response = requests.get(url)
-
-        # Verifica se a requisição foi bem-sucedida
-        if response.status_code == 200:
+    def process_tag(self, tag):
+        """Verifica se a tag está autorizada consultando os colaboradores e registra entrada/saída."""
+        url = "http://localhost:5000/collaborators"
+        try:
+            response = requests.get(url)
             colaboradores = response.json()
+        except Exception as e:
+            print("Erro ao buscar colaboradores:", e)
+            return
 
+        # Inicialmente, define como desconhecido e não autorizado
+        nome = "Desconhecido"
+        autorizado = False
+
+        # Faz um loop pelos colaboradores para ver se a tag corresponde
         for colaborador in colaboradores:
-            if tag == colaborador["tag"]:
-                nome = colaborador["name"]
-                autorizado = True
-            else:
-                nome = "Desconhecido"
-                autorizado = False
-            
-                print(f"Nome: {nome}, Autorizado: {autorizado}")
-        else:
-             print("Erro ao acessar a API:", response.status_code)
+            if colaborador.get("tag") == tag:
+                nome = colaborador.get("name", "Desconhecido")
+                autorizado = colaborador.get("authorized", False)
+                break
+
+        # Se não estiver autorizado, envia log de tentativa não autorizada
         if not autorizado:
             self.send_log_to_api(f"Tentativa NÃO AUTORIZADA para tag {tag} - {datetime.now()}")
             return
@@ -60,6 +60,7 @@ class SistemaControleAcesso:
         else:
             self.estado_colaboradores[tag] = "outside"
             self.send_log_to_api(f"{nome} (tag {tag}) saiu às {datetime.now()}")
+ 
 
     def iniciar(self):
         try:
