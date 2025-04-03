@@ -19,6 +19,7 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS collaborators (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            password TEXT NOT NULL,          
             tag INTEGER UNIQUE,
             authorized INTEGER DEFAULT 0
         )
@@ -70,10 +71,10 @@ def list_collaborators():
     try:
         with connect_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, name, tag, authorized FROM collaborators")
+            cursor.execute("SELECT id, name, password, tag, authorized FROM collaborators")
             rows = cursor.fetchall()
         collaborators = [
-            {"id": row[0], "name": row[1], "tag": row[2], "authorized": bool(row[3])} for row in rows
+            {"id": row[0], "name": row[1],"password": row[2] , "tag": row[3], "authorized": bool(row[4])} for row in rows
         ]
         return jsonify(collaborators), 200
     except Exception as e:
@@ -86,15 +87,19 @@ def create_collaborator():
         name = data.get("name")
         tag = data.get("tag")
         authorized = data.get("authorized", False)
+        password = data.get("password")
         
         if not name or not tag:
             return jsonify({"error": "Name and tag are required"}), 400
         
+        if password != "admin":
+            return jsonify({"error": "invalid password"}), 400
+
         with connect_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO collaborators (name, tag, authorized) VALUES (?, ?, ?)",
-                (name, tag, int(authorized))
+                "INSERT INTO collaborators (name, tag, authorized, password) VALUES (?, ?, ?, ?)",
+                (name, tag, int(authorized), password)
             )
             conn.commit()
         
@@ -109,7 +114,11 @@ def update_collaborator(id):
         name = data.get("name")
         tag = data.get("tag")
         authorized = data.get("authorized")
-        
+        password = data.get("password")
+
+        if password != "admin":
+            return jsonify({"error": "invalid password"}), 400
+
         with connect_db() as conn:
             cursor = conn.cursor()
             # Atualiza os campos somente se forem passados
@@ -123,8 +132,8 @@ def update_collaborator(id):
             authorized = int(authorized) if authorized is not None else collaborator[3]
             
             cursor.execute(
-                "UPDATE collaborators SET name = ?, tag = ?, authorized = ? WHERE id = ?",
-                (name, tag, authorized, id)
+                "UPDATE collaborators SET name = ?, tag = ?, authorized = ? WHERE id = ?, password = ?",
+                (name, tag, authorized, password, id)
             )
             conn.commit()
         
@@ -135,6 +144,12 @@ def update_collaborator(id):
 @app.route('/collaborators/<int:id>', methods=['DELETE'])
 def delete_collaborator(id):
     try:
+        data = request.json
+        password = data.get("password")
+
+        if password != "admin":
+            return jsonify({"error": "invalid password"}), 400
+    
         with connect_db() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM collaborators WHERE id = ?", (id,))
@@ -148,4 +163,4 @@ def index():
     return "API de Gerenciamento de Acessos no ar!"
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)
